@@ -15,15 +15,17 @@
   
   $('#contactForm').on( "submit", function(e) {
     e.preventDefault();
+    var $this = $(this);
     var captcha_action = 'add_comment';
     grecaptcha.ready(function() {
-      grecaptcha.execute('6LcUxr8UAAAAANajKtWBlMZ0000000', {action: 'add_comment'})
+      grecaptcha.execute('6LcUxr8UAAAAAN1NFPR02ajKtWBlMZsgLXhxCdK4', {action: 'add_comment'})
         .then(function(token) {
           if (token) {
             document.getElementById('token').value = token;
             document.getElementById('action').value = captcha_action;
           }
-          var data = $(this).serialize();
+          var data = $this.serializeArray();
+          console.log(data);
           $.ajax({
             type: "POST",
             url: "mail.php",
@@ -37,8 +39,8 @@
                 console.log('You are spammer!');
               }
             },
-            error: function() {
-              console.log('message send error');
+            error: function(result) {
+              console.log(['message send error',result]);
             }
           });
       });
