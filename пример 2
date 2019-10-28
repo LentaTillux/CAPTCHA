@@ -1,0 +1,91 @@
+через обработку формы более приятным способом
+<section class="section_inner" id="feed">
+    <div class="container">
+      <div class="section__ttl section__ttl_dec yel">Оставить заявку</div>
+      <form class="feed" id="contactForm">
+          <input type="hidden" name="token" id="token">
+          <input type="hidden" name="action" id="action">
+        <input type="text" name="name" placeholder="Ваше имя" required="" class="mb-2 w-100">
+        <input type="tel" name="phone" placeholder="Ваш телефон" required="" class="mb-4 w-100">
+        <button type="submit" class="btn feed__btn mb-3 w-100">Отправить</button>
+        <div class="tac">Нажимая кнопку "Отправить", вы даете <a href="https://pd163.ru/usloviia-obrabotki-informatsii/" target="_blank" class="und">Согласие на обработку персональных данных</a></div>
+      </form>
+    </div>
+  </section>
+  
+  $('#contactForm').on( "submit", function(e) {
+    e.preventDefault();
+    var captcha_action = 'add_comment';
+    grecaptcha.ready(function() {
+      grecaptcha.execute('6LcUxr8UAAAAANajKtWBlMZ0000000', {action: 'add_comment'})
+        .then(function(token) {
+          if (token) {
+            document.getElementById('token').value = token;
+            document.getElementById('action').value = captcha_action;
+          }
+          var data = $(this).serialize();
+          $.ajax({
+            type: "POST",
+            url: "mail.php",
+            data: data,
+            dataType: "json",
+            success: function(result){
+              console.log(['message send success', result]);
+              if(result.success) {
+                console.log('Thanks!')
+              } else {
+                console.log('You are spammer!');
+              }
+            },
+            error: function() {
+              console.log('message send error');
+            }
+          });
+      });
+    });
+  });
+  
+  
+<?php
+if (isset($_POST['token']) && isset($_POST['action'])) {
+	$captcha_token = $_POST['token'];
+	$captcha_action = $_POST['action'];
+} else {
+	die('Капча работает некорректно. Обратитесь к администратору!');
+}
+$url = 'https://www.google.com/recaptcha/api/siteverify';
+$params = [
+    'secret' => '6LcUxr8UAAAAAMqOSUNC8q11111111',
+    'response' => $captcha_token,
+    'remoteip' => $_SERVER['REMOTE_ADDR']
+];
+$ch = curl_init($url);
+curl_setopt($ch, CURLOPT_POST, 1);
+curl_setopt($ch, CURLOPT_POSTFIELDS, $params);
+curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 1);
+curl_setopt($ch, CURLOPT_HEADER, 0);
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+$response = curl_exec($ch);
+if(!empty($response)) $decoded_response = json_decode($response);
+$success = false;
+if ($decoded_response && $decoded_response->success && $decoded_response->action == $captcha_action && $decoded_response->score > 0) {
+    $success = $decoded_response->success;
+}
+$result = $success ? sendMail() : 'Неверная капча!';
+
+function sendMail() {
+    $to  = "noreply@example.ru";
+    //$to .= ", mail2@example.com";
+
+    $subject = "Заголовок письма";
+    $name = $_POST['name'];
+    $phone = $_POST['phone'];
+    $message = "<p>Имя</p> <b>$name</b> </br><p>Телефон:</p> <b>$phone</b> </br>";
+
+    $headers  = "Content-type: text/html; charset=utf-8 \r\n";
+    $headers .= "From: От кого письмо <from@example.com>\r\n";
+    $headers .= "Reply-To: reply-to@example.com\r\n";
+
+    mail($to, $subject, $message, $headers);
+}
+echo $result;
